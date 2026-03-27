@@ -1,131 +1,93 @@
 import telebot
-from instagrapi import Client
-import threading
-import time
+import yt_dlp
+import os
 
-# --- بياناتك ---
 TOKEN = '8607922156:AAFHV0f9aHoNH0aQcusL_4oo0NFIhH_B9Ds'
-INSTA_USER = 'bhsfso76268'
-INSTA_PASS = 'Ali9090iraq'
-MY_CHAT_ID = 486391606
 
 bot = telebot.TeleBot(TOKEN)
-cl = Client()
 
-seen_messages = set()
+DOWNLOAD_PATH = "downloads"
+os.makedirs(DOWNLOAD_PATH, exist_ok=True)
 
-# تسجيل دخول انستغرام
-def login():
-    try:
-        cl.login(INSTA_USER, INSTA_PASS)
-        print("✅ تم تسجيل الدخول لانستغرام")
-        return True
-    except Exception as e:
-        print("❌ خطأ تسجيل الدخول:", e)
-        return False
-
-# مراقبة الدايركت
-def monitor_dm():
-    while True:
-        try:
-            threads = cl.direct_threads()
-            for thread in threads:
-                for msg in thread.messages:
-                    if msg.id not in seen_messages:
-                        seen_messages.add(msg.id)
-
-                        if msg.text:
-                            bot.send_message(MY_CHAT_ID, f"📩 {msg.text}")
-
-                        if msg.video_url:
-                            bot.send_video(MY_CHAT_ID, msg.video_url)
-
-                        if msg.photo:
-                            bot.send_photo(MY_CHAT_ID, msg.photo)
-
-            time.sleep(20)
-
-        except Exception as e:
-            print("❌ DM Error:", e)
-            time.sleep(30)
-
-# --- أوامر التليجرام ---
+# حجم 50MB
+MAX_SIZE = 50 * 1024 * 1024
 
 @bot.message_handler(commands=['start'])
 def start(msg):
-    bot.reply_to(msg, "🔥 البوت شغال!\n\nالأوامر:\n/profile user\n/story user\n/info user\n/posts user")
+    bot.reply_to(msg,
+        "🔥 دز رابط لأي فيديو\n\n"
+        "🎬 تحميل فيديو: بس دز الرابط\n"
+        "🎧 تحميل صوت: اكتب /audio + الرابط"
+    )
 
-# صورة الحساب
-@bot.message_handler(commands=['profile'])
-def profile(msg):
+# تحميل فيديو
+@bot.message_handler(func=lambda m: "http" in m.text and not m.text.startswith("/audio"))
+def download_video(msg):
+    url = msg.text.strip()
+    bot.reply_to(msg, "⏳ جاري تحميل الفيديو بأعلى جودة...")
+
     try:
-        user = msg.text.split()[1]
-        info = cl.user_info_by_username(user)
-        bot.send_photo(msg.chat.id, info.profile_pic_url)
-    except:
-        bot.reply_to(msg, "❌ خطأ بالأمر")
+        ydl_opts = {
+            'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+            'quiet': True
+        }
 
-# معلومات حساب
-@bot.message_handler(commands=['info'])
-def info(msg):
-    try:
-        user = msg.text.split()[1]
-        u = cl.user_info_by_username(user)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_path = ydl.prepare_filename(info)
 
-        text = f"""
-👤 الاسم: {u.full_name}
-📛 اليوزر: {u.username}
-👥 المتابعين: {u.follower_count}
-➡️ يتابع: {u.following_count}
-📝 البايو: {u.biography}
-"""
-        bot.send_message(msg.chat.id, text)
-    except:
-        bot.reply_to(msg, "❌ خطأ بالأمر")
+            if not file_path.endswith(".mp4"):
+                file_path = file_path.rsplit(".", 1)[0] + ".mp4"
 
-# ستوري
-@bot.message_handler(commands=['story'])
-def story(msg):
-    try:
-        user = msg.text.split()[1]
-        user_id = cl.user_id_from_username(user)
-        stories = cl.user_stories(user_id)
+        size = os.path.getsize(file_path)
 
-        if not stories:
-            bot.reply_to(msg, "❌ ماكو ستوري")
-            return
-
-        for s in stories:
-            if s.video_url:
-                bot.send_video(msg.chat.id, s.video_url)
+        with open(file_path, 'rb') as f:
+            if size > MAX_SIZE:
+                bot.send_document(msg.chat.id, f)
             else:
-                bot.send_photo(msg.chat.id, s.thumbnail_url)
+                bot.send_video(msg.chat.id, f)
 
-    except:
-        bot.reply_to(msg, "❌ خطأ بالأمر")
+        os.remove(file_path)
 
-# منشورات
-@bot.message_handler(commands=['posts'])
-def posts(msg):
+    except Exception as e:
+        bot.reply_to(msg, f"❌ خطأ:\n{e}")
+
+# تحميل صوت
+@bot.message_handler(commands=['audio'])
+def download_audio(msg):
     try:
-        user = msg.text.split()[1]
-        user_id = cl.user_id_from_username(user)
-        medias = cl.user_medias(user_id, 3)
-
-        for m in medias:
-            if m.video_url:
-                bot.send_video(msg.chat.id, m.video_url)
-            else:
-                bot.send_photo(msg.chat.id, m.thumbnail_url)
-
+        url = msg.text.split(" ", 1)[1]
     except:
-        bot.reply_to(msg, "❌ خطأ بالأمر")
+        bot.reply_to(msg, "❌ اكتب /audio + الرابط")
+        return
 
-# تشغيل
-if login():
-    bot.send_message(MY_CHAT_ID, "🚀 البوت اشتغل ويراقب الدايركت")
-    threading.Thread(target=monitor_dm, daemon=True).start()
-else:
-    bot.send_message(MY_CHAT_ID, "❌ فشل تسجيل الدخول")
+    bot.reply_to(msg, "⏳ جاري تحميل الصوت...")
 
-bot.infinity_polling(skip_pending=True)
+    try:
+        ydl_opts = {
+            'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+            'format': 'bestaudio/best',
+            'quiet': True,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            file_path = ydl.prepare_filename(info)
+            file_path = file_path.rsplit(".", 1)[0] + ".mp3"
+
+        with open(file_path, 'rb') as f:
+            bot.send_audio(msg.chat.id, f)
+
+        os.remove(file_path)
+
+    except Exception as e:
+        bot.reply_to(msg, f"❌ خطأ:\n{e}")
+
+bot.infinity_polling()
