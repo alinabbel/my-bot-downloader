@@ -12,23 +12,26 @@ MY_CHAT_ID = '486391606'
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
-L = instaloader.Instaloader(user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36")
+
+# محاكاة بصمة سفاري على آيفون (نفس اللي فتحت بيه هسة)
+L = instaloader.Instaloader(user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1")
+
 keep_alive()
 
 def login_insta():
     try:
-        # محاولة الدخول بنفس يوزر وباسورد المرة اللي فاتت
+        # محاولة الدخول بهوية سفاري
         L.login(INSTA_USER, INSTA_PASS)
-        print("✅ تم تسجيل الدخول المباشر بنجاح!")
+        print("✅ أخيراً! السيرفر تنكر بهيئة سفاري ودخل بنجاح")
         return True
     except Exception as e:
-        print(f"❌ الإنستا يطلب تأكيد: {e}")
+        print(f"❌ الإنستا بعده شاك بالبصمة: {e}")
         return False
 
 def check_messages():
     while True:
         try:
-            # مراقبة الدايركت كل 45 ثانية حتى ما يشك النظام
+            # مراقبة الدايركت (نفس طريقتك بالفيديو)
             for thread in L.get_threads():
                 if thread.unread_count > 0:
                     for item in thread.get_items():
@@ -43,8 +46,8 @@ def check_messages():
                             if "?" in shortcode: shortcode = shortcode.split("?")[0]
                             post = instaloader.Post.from_shortcode(L.context, shortcode)
                             if post.is_video:
-                                bot.send_video(MY_CHAT_ID, post.video_url, caption="حملته إلك من الدايركت! 🔥")
-            time.sleep(45)
+                                bot.send_video(MY_CHAT_ID, post.video_url, caption="وصلك الفيديو بالدايركت وحملته! 🚀")
+            time.sleep(40)
         except:
             time.sleep(60)
 
