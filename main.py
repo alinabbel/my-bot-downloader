@@ -6,7 +6,7 @@ import time
 # --- بياناتك ---
 TOKEN = '8607922156:AAFHV0f9aHoNH0aQcusL_4oo0NFIhH_B9Ds'
 INSTA_USER = 'bhsfso76268'
-INSTA_PASS = '0099ali1122'
+INSTA_PASS = 'Ali9090iraq'
 MY_CHAT_ID = 486391606
 
 bot = telebot.TeleBot(TOKEN)
