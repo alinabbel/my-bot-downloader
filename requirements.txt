@@ -1,4 +1,2 @@
 pyTelegramBotAPI
-requests
-flask
-git+https://github.com/ping/instagram_private_api.git
+instagrapi
